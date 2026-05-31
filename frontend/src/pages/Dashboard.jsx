@@ -6,6 +6,7 @@ import Tasks from './Tasks'
 import AdminDashboard from './admin/AdminDashboard'
 import Sessions from './Sessions'
 import Meetings from './Meetings'
+import Analytics from './admin/Analytics'
 import Reports from './admin/Reports'
 const isAdmin = JSON.parse(localStorage.getItem('user')||'{}').role === 'ADMIN';
 const nav = [
@@ -15,6 +16,7 @@ const nav = [
   { path:'/tasks', label:'Tasks' },
   { path:'/sessions', label:'Sessions' },
   { path:'/meetings', label:'Meetings' },
+  { path:'/analytics', label:'Analytics' },
   { path:'/reports', label:'Reports' },
   ...(isAdmin ? [{ path:'/admin', label:'Admin Panel' }] : [])
 ]
@@ -38,12 +40,14 @@ export default function Dashboard() {
           <Route path="tasks" element={<Tasks />} />
           <Route path="sessions" element={<Sessions />} />
           <Route path="meetings" element={<Meetings />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="reports" element={<Reports />} />`n          {isAdmin && <Route path="admin" element={<AdminDashboard />} />}
         </Routes>
       </main>
     </div>
   )
 }
+
 
 
 

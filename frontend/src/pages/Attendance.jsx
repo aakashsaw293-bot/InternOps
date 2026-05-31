@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import api from '../lib/axios'
 import useAuthStore from '../store/auth'
 import AttendanceMarkForm from '../components/AttendanceMarkForm'
+import BulkAttendanceForm from '../components/BulkAttendanceForm'
 
 export default function Attendance() {
   const { user } = useAuthStore()
@@ -17,7 +18,7 @@ export default function Attendance() {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-4">Attendance</h2>
-      {canMark && <AttendanceMarkForm />}
+      {canMark && <> <AttendanceMarkForm /> <BulkAttendanceForm /> </>}
       <div className="mb-4 flex gap-2 items-center">
         <input
           type="text"
@@ -55,3 +56,4 @@ export default function Attendance() {
     </div>
   )
 }
+
