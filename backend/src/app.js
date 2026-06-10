@@ -34,6 +34,12 @@ app.register(require("@fastify/rate-limit"), {
   max: 1000,
   timeWindow: "1 minute",
 });
+app.register(require('@fastify/compress'), {
+  threshold: 1024, 
+  zlib: {
+    level: 6 
+  }
+});
 app.register(require("@fastify/cookie"));
 const { csrfProtection } = require("./middleware/csrf");
 app.addHook("onRequest", csrfProtection);
