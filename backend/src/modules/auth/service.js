@@ -78,8 +78,36 @@ async function refreshTokens(token, ip) {
     refreshToken: newRefresh,
   };
 }
+async function logout(
+  token,
+  authenticatedUserId,
+  ip,
+  userAgent
+) {
+  let decoded;
 
-async function logout(token) { await repo.revokeRefreshTokenRedis(hashToken(token)); }
+  try {
+    decoded = verifyRefreshToken(token);
+  } catch {
+    throw new UnauthorizedError('Invalid refresh token');
+  }
 
+  if (String(decoded.id) !== String(authenticatedUserId)) {
+    throw new UnauthorizedError(
+      'Token does not belong to authenticated user'
+    );
+  }
+
+  await repo.revokeRefreshTokenRedis(
+    hashToken(token)
+  );
+
+  await createAuditLog({
+    userId: authenticatedUserId,
+    action: 'LOGOUT',
+    ipAddress: ip,
+    userAgent
+  });
+}
 module.exports = { register, login, refreshTokens, logout };
 
