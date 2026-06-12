@@ -71,7 +71,9 @@ export default function Attendance() {
               <tbody>
                 {records.map(a => (
                   <tr key={a.id} className="border-t hover:bg-gray-50">
-                    <td className="p-3">{new Date(a.date).toLocaleDateString()}</td>
+                    <td className="p-2 border">
+                      {new Date(a.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
                     <td className="p-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[a.status] || ''}`}>{a.status}</span></td>
                     <td className="p-3">{a.remarks || '—'}</td>
                   </tr>
