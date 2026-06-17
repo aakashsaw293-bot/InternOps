@@ -20,10 +20,7 @@ async function get(userId, { page = 1, limit = 20 } = {}) {
     [userId, safeLim, offset]
   );
 
-  const total =
-    res.rows.length > 0
-      ? parseInt(res.rows[0].total_count, 10)
-      : 0;
+  const total = res.rows.length > 0 ? parseInt(res.rows[0].total_count, 10) : 0;
 
   return {
     data: res.rows.map(({ total_count, ...row }) => row),
