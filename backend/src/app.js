@@ -69,6 +69,11 @@ app.register(require('@fastify/multipart'), {
   },
 });
 
+app.register(require('@fastify/static'), {
+  root: path.join(__dirname, '..', config.uploadDir),
+  prefix: '/uploads/',
+});
+
 if (process.env.NODE_ENV !== 'test') {
   app.register(require('@fastify/swagger'), {
     openapi: {
