@@ -65,6 +65,17 @@ async function softDeleteUser(id) {
     [id]
   );
 }
+async function createUser(user) {
+  const { full_name, email, password_hash, role } = user;
+  const result = await pool.query(
+    `INSERT INTO users (full_name, email, password_hash, role, suspended, created_at, updated_at)
+    VALUES ($1,$2,$3,$4,FALSE,NOW(),NOW())
+    RETURNING id,email,role,full_name,suspended`,
+    [full_name, email, password_hash, role]
+  );
+
+  return result.rows[0];
+}
 module.exports = {
   listUsersByRole,
   listUsersPaginated,
@@ -72,4 +83,5 @@ module.exports = {
   suspendUser,
   activateUser,
   softDeleteUser,
+  createUser,
 };
