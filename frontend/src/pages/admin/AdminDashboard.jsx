@@ -4,6 +4,7 @@ import { Search, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
 import api from '../../lib/axios';
 import { PageHeader, Spinner, EmptyState } from '../../components/ui';
 import UserActionMenu from '../../components/UserActionMenu';
+import CreateUserModal from '../../components/admin/CreateUserModal';
 
 const ROLE_COLOR = {
   ADMIN: 'bg-brand-orange/10 text-brand-orange',
@@ -31,13 +32,7 @@ export default function AdminDashboard() {
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [deletingUserId, setDeletingUserId] = useState(null);
-  const [showAddUser, setShowAddUser] = useState(false);
-  const [newUser, setNewUser] = useState({
-    full_name: '',
-    email: '',
-    password: '',
-    role: 'INTERN',
-  });
+  const [createUserOpen, setCreateUserOpen] = useState(false);
   const limit = 10;
 
   const { data, isLoading } = useQuery({
@@ -60,16 +55,6 @@ export default function AdminDashboard() {
     mutationFn: (id) => api.delete(`/users/${id}`),
     onSuccess: inv,
     onSettled: () => setDeletingUserId(null),
-  });
-  const createUserMut = useMutation({
-    mutationFn: (userData) => api.post('/users', userData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['adminUsers'],
-      });
-      setShowAddUser(false);
-      setNewUser({ full_name: '', email: '', password: '', role: 'INTERN' });
-    },
   });
 
   // Client-side filter and search over the loaded page. Combined with
@@ -102,25 +87,20 @@ export default function AdminDashboard() {
       deleteMut.mutate(user.id);
     }
   };
-  const handleCreateUser = async () => {
-    try {
-      await createUserMut.mutateAsync(newUser);
-      alert('User created successfully!');
-    } catch (err) {
-      const data = err?.response?.data;
-      if (data?.details?.length) {
-        alert(data.details[0].message);
-      } else {
-        alert(data?.error || 'Failed to create user');
-      }
-    }
-  };
 
   return (
     <div>
       <PageHeader
         title="User Directory"
         subtitle="Manage all platform accounts, roles, and status"
+        actions={
+          <button
+            onClick={() => setCreateUserOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-green hover:opacity-90 text-slate-950 font-bold rounded-lg transition text-sm shadow-md"
+          >
+            <span>+ Add User</span>
+          </button>
+        }
         icon={
           <div className="w-11 h-11 rounded-xl bg-brand-orange text-white flex items-center justify-center shadow-md">
             <ShieldCheck className="w-5 h-5" />
@@ -160,13 +140,6 @@ export default function AdminDashboard() {
           <option value="active">Active</option>
           <option value="suspended">Suspended</option>
         </select>
-
-        <button
-          onClick={() => setShowAddUser(true)}
-          className="px-4 py-2 bg-brand-orange text-white rounded-lg hover:opacity-90"
-        >
-          + Add User
-        </button>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
@@ -283,85 +256,11 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      {showAddUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Add User</h2>
 
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={newUser.full_name}
-              onChange={(e) =>
-                setNewUser({
-                  ...newUser,
-                  full_name: e.target.value,
-                })
-              }
-              className="w-full border rounded-lg px-3 py-2 mb-3"
-            />
-
-            <input
-              type="email"
-              placeholder="Email"
-              value={newUser.email}
-              onChange={(e) =>
-                setNewUser({
-                  ...newUser,
-                  email: e.target.value,
-                })
-              }
-              className="w-full border rounded-lg px-3 py-2 mb-3"
-            />
-
-            <input
-              type="password"
-              placeholder="Password"
-              value={newUser.password}
-              onChange={(e) =>
-                setNewUser({
-                  ...newUser,
-                  password: e.target.value,
-                })
-              }
-              className="w-full border rounded-lg px-3 py-2 mb-3"
-            />
-
-            <select
-              value={newUser.role}
-              onChange={(e) =>
-                setNewUser({
-                  ...newUser,
-                  role: e.target.value,
-                })
-              }
-              className="w-full border rounded-lg px-3 py-2 mb-4"
-            >
-              <option value="INTERN">Intern</option>
-              <option value="CAPTAIN">Captain</option>
-              <option value="TL">TL</option>
-              <option value="SENIOR_TL">Senior TL</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowAddUser(false)}
-                className="px-4 py-2 border rounded-lg"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleCreateUser}
-                className="px-4 py-2 bg-brand-orange text-white rounded-lg"
-              >
-                Create User
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateUserModal
+        open={createUserOpen}
+        onClose={() => setCreateUserOpen(false)}
+      />
     </div>
   );
 }
