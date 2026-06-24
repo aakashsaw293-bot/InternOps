@@ -50,42 +50,56 @@ async function routes(fastify) {
       const { email, password } = z
         .object({ email: z.string().email(), password: z.string() })
         .parse(req.body);
+
       const result = await service.login(
         email,
         password,
         req.ip,
         req.headers['user-agent']
       );
+
       reply.setCookie('refreshToken', result.refreshToken, {
-  httpOnly: true,
-  secure: isProduction,
-  sameSite: 'strict',
-  path: '/api/auth/refresh',
-});
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'strict',
+        path: '/api/auth/refresh',
+      });
 
-const response = {
-  accessToken: result.accessToken,
-  user: result.user,
-};
+      const { rotateAndSetCsrf } = require('../../middleware/csrf');
+      rotateAndSetCsrf(req, reply, result.user.id);
 
-reply.send(response);
+      // From fix/deferred-audit-log-486
+      req.auditOnResponse = {
+        userId: result.user.id,
+        action: 'LOGIN',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      };
 
-req.log.info(
-  {
-    action: 'LOGIN',
-    userId: result.user.id,
-    ip: req.ip,
-    userAgent: req.headers['user-agent'],
-  },
-  'login success'
-);
+      // From master
+      const response = {
+        accessToken: result.accessToken,
+        user: result.user,
+      };
 
-createAuditLog({
-  userId: result.user.id,
-  action: 'LOGIN',
-  ipAddress: req.ip,
-  userAgent: req.headers['user-agent'],
-}).catch((err) => req.log.error(err, 'audit log failed'));
+      reply.send(response);
+
+      req.log.info(
+        {
+          action: 'LOGIN',
+          userId: result.user.id,
+          ip: req.ip,
+          userAgent: req.headers['user-agent'],
+        },
+        'login success'
+      );
+
+      createAuditLog({
+        userId: result.user.id,
+        action: 'LOGIN',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      }).catch((err) => req.log.error(err, 'audit log failed'));
     }
   );
 
@@ -96,7 +110,7 @@ createAuditLog({
       schema: { tags: ['Authentication'], description: 'Refresh access token' },
     },
     async (req, reply) => {
-      const token = req.cookies.refreshToken || req.body.refreshToken;
+      const token = req.cookies.refreshToken;
       if (!token)
         return reply.status(400).send({ error: 'Refresh token required' });
       const tokens = await service.refreshTokens(token, req.ip);
@@ -137,6 +151,18 @@ createAuditLog({
       );
 
       reply.clearCookie('refreshToken', { path: '/api/auth/refresh' });
+
+      // From fix/deferred-audit-log-486
+      req.auditOnResponse = {
+        userId: req.user.id,
+        action: 'LOGOUT',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      };
+
+      reply.clearCookie('csrf-sid', { path: '/' });
+      reply.clearCookie('csrf-token', { path: '/' });
+
       return { message: 'Logged out' };
     }
   );
@@ -180,7 +206,7 @@ createAuditLog({
   // Forgot password
   fastify.post('/forgot-password', async (req, reply) => {
     const { email } = z.object({ email: z.string().email() }).parse(req.body);
-    await forgotPassword(email, extractRequestInfo(req));
+    req.auditOnResponse = await forgotPassword(email, extractRequestInfo(req));
     return { message: 'If that email exists, a reset link has been sent.' };
   });
 
@@ -189,7 +215,11 @@ createAuditLog({
     const { token, newPassword } = z
       .object({ token: z.string(), newPassword: z.string().min(8) })
       .parse(req.body);
-    await resetPassword(token, newPassword, extractRequestInfo(req));
+    req.auditOnResponse = await resetPassword(
+      token,
+      newPassword,
+      extractRequestInfo(req)
+    );
     return {
       message:
         'Password reset successful. Please log in with your new password.',

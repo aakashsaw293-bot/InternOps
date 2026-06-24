@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // All backend routes are mounted under /api; Vite proxies this to :5000 in dev.
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
 });
 
@@ -62,7 +62,19 @@ api.interceptors.request.use(async (config) => {
 let refreshing = null;
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    const url = res.config?.url;
+    if (
+      url &&
+      (url.includes('/auth/login') ||
+        url.includes('/auth/logout') ||
+        url.includes('/me/revoke-all') ||
+        url.includes('/auth/reset-password'))
+    ) {
+      clearCsrfToken();
+    }
+    return res;
+  },
   async (err) => {
     const original = err.config || {};
     const status = err.response?.status;

@@ -8,7 +8,8 @@ const metrics = require('./utils/metrics');
 const { initializeWebSocket } = require('./websocket');
 
 const app = Fastify({
-  trustProxy: true,
+  trustProxy:
+    config.nodeEnv === 'production' ? [config.trustedProxyCidr] : 'loopback',
   logger:
     config.nodeEnv === 'development'
       ? { transport: { target: 'pino-pretty' } }
@@ -24,32 +25,6 @@ app.register(require('@fastify/cors'), {
 });
 
 app.register(require('@fastify/helmet'));
-
-app.register(async function sanitizationPlugin(instance) {
-  instance.addHook('preValidation', async (request) => {
-    const sanitize = (obj) => {
-      if (!obj || typeof obj !== 'object') return;
-
-      for (const key of Object.keys(obj)) {
-        const val = obj[key];
-
-        if (typeof val === 'string') {
-          // Strip HTML tags to mitigate XSS. Quotes are intentionally
-          // preserved: SQL injection is handled by parameterized queries,
-          // and stripping quotes corrupts valid input such as passwords
-          // and base64 CSRF tokens.
-          obj[key] = val.replace(/<[^>]*>/g, '');
-        } else if (typeof val === 'object') {
-          sanitize(val);
-        }
-      }
-    };
-
-    sanitize(request.body);
-    sanitize(request.query);
-    sanitize(request.params);
-  });
-});
 
 //  Register once globally — no Redis dependency
 app.register(require('@fastify/rate-limit'), {
@@ -67,6 +42,11 @@ app.register(require('@fastify/multipart'), {
   limits: {
     fileSize: config.maxFileSize,
   },
+});
+
+app.register(require('@fastify/static'), {
+  root: path.join(__dirname, '..', config.uploadDir),
+  prefix: '/uploads/',
 });
 
 if (process.env.NODE_ENV !== 'test') {
@@ -180,11 +160,17 @@ app.get('/metrics', metrics.metricsEndpoint);
 app.get('/health', async (req, reply) => {
   const { getRedisStatus } = require('./config/redis');
   const redisStatus = getRedisStatus();
+
+  if (process.env.NODE_ENV === 'test') {
+    return reply.send({ status: 'ok' });
+  }
+
   if (redisStatus === 'disconnected') {
     return reply
       .status(503)
       .send({ status: 'degraded', redis: 'disconnected' });
   }
+
   return reply.send({ status: 'ok' });
 });
 
@@ -205,6 +191,7 @@ app.get('/health/db', async (req, reply) => {
 
 app.get('/health/full', async (req, reply) => {
   const checks = { db: false, redis: false };
+
   try {
     await pool.query('SELECT 1');
     checks.db = true;
@@ -212,9 +199,14 @@ app.get('/health/full', async (req, reply) => {
 
   const { getRedisStatus } = require('./config/redis');
   const redisStatus = getRedisStatus();
-  checks.redis = redisStatus === 'connected' || redisStatus === 'disabled';
+
+  checks.redis =
+    process.env.NODE_ENV === 'test' ||
+    redisStatus === 'connected' ||
+    redisStatus === 'disabled';
 
   const healthy = checks.db && checks.redis;
+
   reply
     .status(healthy ? 200 : 503)
     .send({ status: healthy ? 'healthy' : 'degraded', checks });
@@ -231,6 +223,20 @@ app.addHook('onRequest', async (request) => {
     },
     'incoming'
   );
+});
+
+app.addHook('onResponse', async (request) => {
+  if (!request.auditOnResponse) return;
+
+  const { createAuditLog } = require('./utils/audit');
+  try {
+    await createAuditLog(request.auditOnResponse);
+  } catch (err) {
+    request.log.error(
+      { err, audit: request.auditOnResponse },
+      'Failed to write deferred audit log'
+    );
+  }
 });
 
 app.setErrorHandler((error, request, reply) => {

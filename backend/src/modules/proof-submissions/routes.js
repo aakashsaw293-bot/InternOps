@@ -1,7 +1,6 @@
 ﻿const auth = require('../../middleware/auth');
 const rbac = require('../../middleware/rbac');
 const repo = require('../social-tasks/repository');
-const { createAuditLog } = require('../../utils/audit');
 const { checkHierarchyAccess } = require('../../utils/hierarchy');
 const path = require('path');
 const fs = require('fs');
@@ -95,12 +94,12 @@ await pipeline(data.file, writeStream);
 
 const dbSavedPath = ['uploads', filename].join('/');
       const proof = await repo.submitProof(task_id, req.user.id, dbSavedPath);
-      await createAuditLog({
+      req.auditOnResponse = {
         userId: req.user.id,
         action: 'PROOF_SUBMITTED',
         resourceType: 'proof',
         resourceId: proof.id,
-      });
+      };
       return proof;
     }
   );
@@ -121,12 +120,12 @@ const dbSavedPath = ['uploads', filename].join('/');
         if (!verified) {
           return reply.status(404).send({ error: 'Proof not found' });
         }
-        await createAuditLog({
+        req.auditOnResponse = {
           userId: req.user.id,
           action: 'PROOF_VERIFIED',
           resourceType: 'proof',
           resourceId: verified.id,
-        });
+        };
         return verified;
       } catch (err) {
         if (err.message === 'Proof not found') {
