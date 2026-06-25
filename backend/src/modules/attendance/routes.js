@@ -186,16 +186,16 @@ async function routes(fastify) {
       schema: { tags: ['Attendance'], description: 'Get members I can view' },
       preHandler: [auth, rbac('CAPTAIN', 'TL', 'SENIOR_TL', 'ADMIN')],
     },
-async (req) => {
-  if (req.user.role === 'ADMIN') {
-    const pool = require('../../config/db');
-    const all = await pool.query(
-      'SELECT id, full_name, role FROM users WHERE deleted_at IS NULL'
-    );
-    return all.rows;
-  }
-  return await repo.getAuthorizedSubordinates(req.user.id);
-}
+    async (req) => {
+      if (req.user.role === 'ADMIN') {
+        const pool = require('../../config/db');
+        const all = await pool.query(
+          'SELECT id, full_name, role FROM users WHERE deleted_at IS NULL'
+        );
+        return all.rows;
+      }
+      return await repo.getAuthorizedSubordinates(req.user.id);
+    }
   );
 }
 
