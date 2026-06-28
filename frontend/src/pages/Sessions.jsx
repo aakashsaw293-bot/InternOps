@@ -22,14 +22,14 @@ export default function Sessions() {
   const [revokingId, setRevokingId] = useState(null);
 
   const revokeMut = useMutation({
-  mutationFn: (sessionId) => api.delete(`/sessions/me/${sessionId}`),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['sessions'] });
-  },
-  onSettled: () => {
-    setRevokingId(null);
-  },
-});
+    mutationFn: (sessionId) => api.delete(`/sessions/me/${sessionId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
+    onSettled: () => {
+      setRevokingId(null);
+    },
+  });
 
   const revokeAllMut = useMutation({
     mutationFn: () => api.post('/sessions/me/revoke-all', {}),
