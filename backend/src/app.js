@@ -10,6 +10,7 @@ const pool = require('./config/db');
 const metrics = require('./utils/metrics');
 const { initializeWebSocket } = require('./websocket');
 const noticesRoutes = require('./modules/notices/routes');
+const { getRedisStatus } = require('./config/redis');
 
 const app = Fastify({
   trustProxy: config.nodeEnv === 'production' ? true : 'loopback',
@@ -163,7 +164,6 @@ app.get('/fallback', async (req, reply) => {
 app.get('/metrics', metrics.metricsEndpoint);
 
 app.get('/health', async (req, reply) => {
-  const { getRedisStatus } = require('./config/redis');
   const redisStatus = getRedisStatus();
 
   if (process.env.NODE_ENV === 'test') {
@@ -202,7 +202,6 @@ app.get('/health/full', async (req, reply) => {
     checks.db = true;
   } catch {}
 
-  const { getRedisStatus } = require('./config/redis');
   const redisStatus = getRedisStatus();
 
   checks.redis =
