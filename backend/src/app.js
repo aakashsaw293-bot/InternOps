@@ -127,8 +127,6 @@ app.get(
       return reply.send({ status: 'ok' });
     }
 
-app.get('/health', async (req, reply) => {
-  const redisStatus = getRedisStatus();
     if (redisStatus === 'disconnected') {
       return reply
         .status(503)
