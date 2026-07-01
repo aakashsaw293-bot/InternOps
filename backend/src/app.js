@@ -175,7 +175,7 @@ app.get(
       checks.db = true;
     } catch {}
 
-  const redisStatus = getRedisStatus();
+    const redisStatus = getRedisStatus();
 
     checks.redis =
       process.env.NODE_ENV === 'test' ||
